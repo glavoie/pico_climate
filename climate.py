@@ -17,6 +17,7 @@ from homeassistant.components.climate.const import (
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import (
     ATTR_TEMPERATURE,
+    PRECISION_WHOLE,
     CONF_IP_ADDRESS,
     CONF_NAME,
     CONF_UNIQUE_ID,
@@ -72,23 +73,57 @@ class PicoClimate(ClimateEntity):
         self._attr_name = name
         self.ip = ip
 
-        self._attr_hvac_modes = [cls.value for cls in HVACMode]
+        self._attr_hvac_modes = [cls.value for cls in HVACMode if cls != HVACMode.HEAT_COOL]
         self._attr_temperature_unit = TEMP_CELSIUS
         self._attr_supported_features = (
             ClimateEntityFeature.TARGET_TEMPERATURE | ClimateEntityFeature.FAN_MODE
         )
-        self._attr_fan_modes = ["Auto", "Silent", "1", "2", "3", "4", "5"]
+        self._attr_fan_modes = ["Auto", "Quiet", "1", "2", "3", "4", "5"]
         self._attr_hvac_mode = HVACMode.FAN_ONLY
         self._attr_fan_mode = "Auto"
         self._attr_current_temperature = 23
         self._attr_target_temperature = 23
         self._attr_min_temp = 10
-        self._attr_max_temp = 30
+        self._attr_max_temp = 32
+
+    @property
+    def precision(self) -> float:
+        """Return the precision of the system."""
+        return PRECISION_WHOLE
 
     def set_hvac_mode(self, hvac_mode: HVACMode) -> None:
         """Set new target hvac mode."""
 
-        if hvac_mode == HVACMode.OFF:
-            urllib.request.urlopen("http://" + self.ip + "/off").read()
+        self._attr_hvac_mode = hvac_mode
+        self.send_state()
+
+    def set_fan_mode(self, fan_mode):
+        """Set new target fan mode."""
+        self._attr_fan_mode = fan_mode
+        self.send_state()
+
+    def set_temperature(self, **kwargs):
+        """Set new target temperature."""
+        self._attr_target_temperature = int(kwargs['temperature'])
+        self._attr_current_temperature = self._attr_target_temperature
+        self.send_state()
+
+    def send_state(self):
+        if self._attr_hvac_mode == HVACMode.OFF:
+            query = "http://{ip}/state?power=0&mode={mode}&temperature={temperature}&fan={fan}".format(
+                ip=self.ip,
+                mode=self._attr_hvac_mode,
+                temperature=self._attr_target_temperature,
+                fan=self._attr_fan_mode
+            )
+            print(query)
+            urllib.request.urlopen(query).read()
         else:
-            urllib.request.urlopen("http://" + self.ip + "/on").read()
+            query = "http://{ip}/state?power=1&mode={mode}&temperature={temperature}&fan={fan}".format(
+                ip=self.ip,
+                mode=self._attr_hvac_mode,
+                temperature=self._attr_target_temperature,
+                fan=self._attr_fan_mode
+            )
+            print(query)
+            urllib.request.urlopen(query).read()
