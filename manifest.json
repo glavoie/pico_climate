@@ -1,0 +1,12 @@
+{
+  "domain": "pico_climate",
+  "name": "Pi Pico Climate Remote",
+  "requirements": [],
+  "ssdp": [],
+  "zeroconf": [],
+  "homekit": {},
+  "dependencies": [],
+  "codeowners": ["@glavoie"],
+  "iot_class": "assumed_state",
+  "version": "0.0.1"
+}
